@@ -612,14 +612,41 @@ class VenueSimulator {
     }
 
     isPointInTable(px, py, table) {
-        // Simple bounding box check (could be improved for rotated tables)
-        const halfWidth = table.width / 2;
-        const halfHeight = table.height / 2;
+        if (table.shape === 'serpentine') {
+            // For serpentine tables, check if point is within the arc region
+            // Need to account for rotation
+            const dx = px - table.x;
+            const dy = py - table.y;
 
-        return px >= table.x - halfWidth &&
-               px <= table.x + halfWidth &&
-               py >= table.y - halfHeight &&
-               py <= table.y + halfHeight;
+            // Rotate the point back by the table's rotation to check in local space
+            const rotation = (table.rotation || 0) * Math.PI / 180;
+            const cos = Math.cos(-rotation);
+            const sin = Math.sin(-rotation);
+            const localX = dx * cos - dy * sin;
+            const localY = dx * sin + dy * cos;
+
+            const outerRadius = table.width;
+            const innerRadius = table.width - 2.5;
+            const distance = Math.sqrt(localX * localX + localY * localY);
+
+            // Check if within the arc radii
+            if (distance < innerRadius || distance > outerRadius) {
+                return false;
+            }
+
+            // Check if within the 90-degree arc (first quadrant in local space)
+            const angle = Math.atan2(localY, localX);
+            return angle >= 0 && angle <= Math.PI / 2;
+        } else {
+            // Rectangle bounding box check (good enough for now)
+            const halfWidth = table.width / 2;
+            const halfHeight = table.height / 2;
+
+            return px >= table.x - halfWidth &&
+                   px <= table.x + halfWidth &&
+                   py >= table.y - halfHeight &&
+                   py <= table.y + halfHeight;
+        }
     }
 
     isPointInTree(px, py, tree) {
@@ -943,46 +970,44 @@ class VenueSimulator {
         // 4. Maintain proper spacing (3ft minimum between tables)
         // 5. Use a mix of table types for visual interest
 
-        const daisX = this.venue.daisX;
-        const daisY = this.venue.daisY;
-        const daisR = this.venue.daisRadius;
+        const daisX = this.venue.daisX;  // 24ft
+        const daisY = this.venue.daisY;  // 36.5ft
+        const daisR = this.venue.daisRadius;  // 12.5ft
 
-        // Configuration for professional layout
-        const minClearance = 3; // feet from dais
+        // Venue bounds: 62ft wide × 67ft tall
+        // Dais bottom edge: y = 36.5 + 12.5 = 49ft
+        // Available space below dais: 67 - 49 = 18ft
+
+        const minClearance = 4; // feet from dais edge
         const tableSpacing = 4; // feet between tables
-        const aisleWidth = 5; // feet for main aisles
 
-        // SECTION 1: Front section (close to dais, premium seating)
-        // Two 8ft tables flanking the front
-        this.addTable('banquet8', daisX - 10, daisY + daisR + minClearance + 1.25, 0);
-        this.addTable('banquet8', daisX + 10, daisY + daisR + minClearance + 1.25, 0);
+        // SECTION 1: Premium front seating - close to dais
+        // Two 8ft banquet tables flanking center aisle
+        this.addTable('banquet8', 12, 54, 0);  // Left front
+        this.addTable('banquet8', 36, 54, 0);  // Right front
 
-        // SECTION 2: Mid-right section (avoiding trees on right)
-        // Use 6ft tables in this area to work around trees
-        this.addTable('banquet6', daisX + 15, daisY + daisR + minClearance + 6, 0);
-        this.addTable('banquet6', daisX + 15, daisY + daisR + minClearance + 12, 0);
+        // SECTION 2: Mid-section - create balanced rows
+        // Left side with 6ft tables
+        this.addTable('banquet6', 10, 60, 0);  // Left mid
+        this.addTable('banquet6', 22, 60, 0);  // Center-left mid
 
-        // SECTION 3: Mid-left section (open area)
-        // 8ft tables for maximum seating
-        this.addTable('banquet8', daisX - 15, daisY + daisR + minClearance + 6, 0);
-        this.addTable('banquet8', daisX - 15, daisY + daisR + minClearance + 12, 0);
+        // Right side with 6ft tables
+        this.addTable('banquet6', 34, 60, 0);  // Center-right mid
+        this.addTable('banquet6', 46, 60, 0);  // Right mid
 
-        // SECTION 4: Back section (farther from dais)
-        // Create a nice arc pattern
-        this.addTable('banquet8', daisX - 12, daisY + daisR + minClearance + 18, 0);
-        this.addTable('banquet8', daisX + 12, daisY + daisR + minClearance + 18, 0);
+        // SECTION 3: Serpentine accent tables for visual variety
+        // Create elegant curved sections on sides
+        this.addTable('serpentine', 6, 54, 0);   // Left serpentine facing inward
+        this.addTable('serpentine', 48, 54, 270); // Right serpentine facing center
 
-        // SECTION 5: Side sections using serpentines for visual interest
-        // Left side
-        this.addTable('serpentine', daisX - 22, daisY + daisR + 8, 180);
+        // SECTION 4: Above the dais - small intimate area
+        // Place a few tables in the 24ft space above dais
+        this.addTable('banquet6', 12, 20, 0);  // Upper left
+        this.addTable('banquet6', 36, 20, 0);  // Upper right
 
-        // Right side (avoiding trees)
-        this.addTable('serpentine', daisX + 25, daisY + daisR + 8, 270);
-
-        // SECTION 6: Additional seating if space allows
-        // Back corners
-        this.addTable('banquet6', daisX - 18, daisY + daisR + minClearance + 24, 0);
-        this.addTable('banquet6', daisX + 8, daisY + daisR + minClearance + 24, 0);
+        // SECTION 5: Side accent tables
+        // Small tables for intimate groups
+        this.addTable('banquet6', 24, 12, 0);  // Top center
 
         this.selectedTable = null;
         this.render();
