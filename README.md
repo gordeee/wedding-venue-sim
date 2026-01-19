@@ -5,7 +5,7 @@ An interactive, game-style wedding venue layout tool that lets you visualize and
 ## Features
 
 - **Interactive Drag & Drop** - Move tables around with your mouse
-- **Zoom & Pan Controls** - Mouse wheel zoom (30%-300%) and space+drag panning
+- **Zoom & Pan Controls** - Mouse wheel zoom (30%-300%) and click-drag panning
 - **Multiple Table Types** - 8ft banquet, 6ft banquet, and 6ft serpentine tables
 - **Professional Layouts** - AI-generated optimal table arrangements
 - **Real-time Stats** - Track table count and guest capacity
@@ -45,8 +45,8 @@ Based on your venue diagram:
 
 🔍 **Zoom & Pan**:
 - **Mouse Wheel**: Zoom in and out (30% to 300%)
-- **Space + Drag**: Pan/scroll the view around
-- **Middle Mouse Button + Drag**: Alternative pan control
+- **Click & Drag**: Click on empty space and drag to pan the view
+- **Click & Drag Tables**: Click directly on tables to select and move them
 - Zoom intelligently centers on your mouse cursor position
 - Current zoom level displayed in bottom-right corner
 
