@@ -576,29 +576,34 @@ class VenueSimulator {
     }
 
     drawSerpentineTable(table, isSelected) {
-        const radius = table.width * SCALE;
+        const outerRadius = table.width * SCALE;  // 6ft outer arc
+        const innerRadius = (table.width - 2.5) * SCALE;  // Inner arc (2.5ft depth)
 
         // Shadow
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         this.ctx.beginPath();
-        this.ctx.arc(3, 3, radius, 0, Math.PI / 2);
-        this.ctx.lineTo(3, 3);
+        this.ctx.arc(3, 3, outerRadius, 0, Math.PI / 2);
+        this.ctx.arc(3, 3, innerRadius, Math.PI / 2, 0, true);
+        this.ctx.closePath();
         this.ctx.fill();
 
-        // Table top
+        // Table top (crescent/arc shape)
         this.ctx.fillStyle = isSelected ? '#ffd54f' : '#8d6e63';
         this.ctx.strokeStyle = isSelected ? '#ff6f00' : '#5d4037';
         this.ctx.lineWidth = isSelected ? 3 : 2;
         this.ctx.beginPath();
-        this.ctx.arc(0, 0, radius, 0, Math.PI / 2);
-        this.ctx.lineTo(0, 0);
+        // Draw outer arc
+        this.ctx.arc(0, 0, outerRadius, 0, Math.PI / 2);
+        // Draw inner arc in reverse
+        this.ctx.arc(0, 0, innerRadius, Math.PI / 2, 0, true);
+        this.ctx.closePath();
         this.ctx.fill();
         this.ctx.stroke();
 
         // Curved grain effect
         this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
         this.ctx.lineWidth = 1;
-        for (let r = radius * 0.3; r < radius; r += 15) {
+        for (let r = innerRadius + 10; r < outerRadius; r += 15) {
             this.ctx.beginPath();
             this.ctx.arc(0, 0, r, 0, Math.PI / 2);
             this.ctx.stroke();
@@ -608,7 +613,8 @@ class VenueSimulator {
         this.ctx.fillStyle = 'white';
         this.ctx.font = 'bold 9px Courier New';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('SERP', radius * 0.4, radius * 0.4);
+        const labelRadius = (outerRadius + innerRadius) / 2;
+        this.ctx.fillText('SERP', labelRadius * 0.7, labelRadius * 0.7);
     }
 
     drawChairs(table) {
