@@ -58,23 +58,6 @@ class VenueSimulator {
         // Zoom with mouse wheel
         this.canvas.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
 
-        // Track space key for pan mode
-        this.spacePressed = false;
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !e.repeat) {
-                this.spacePressed = true;
-                this.canvas.style.cursor = 'grab';
-                e.preventDefault();
-            }
-        });
-        document.addEventListener('keyup', (e) => {
-            if (e.code === 'Space') {
-                this.spacePressed = false;
-                this.isPanning = false;
-                this.canvas.style.cursor = 'grab';
-            }
-        });
-
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (!this.selectedTable) return;
@@ -205,15 +188,6 @@ class VenueSimulator {
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
 
-        // Pan mode with space key or middle mouse button
-        if (this.spacePressed || e.button === 1) {
-            this.isPanning = true;
-            this.lastPanPoint = { x: screenX, y: screenY };
-            this.canvas.style.cursor = 'grabbing';
-            e.preventDefault();
-            return;
-        }
-
         // Convert to world coordinates
         const worldCoords = this.screenToWorld(screenX, screenY);
         const mouseX = worldCoords.x;
@@ -227,12 +201,16 @@ class VenueSimulator {
                 this.selectedTable = table;
                 this.dragOffset.x = mouseX - table.x;
                 this.dragOffset.y = mouseY - table.y;
+                this.canvas.style.cursor = 'grabbing';
                 this.render();
                 return;
             }
         }
 
-        // If not clicking on a table, deselect
+        // If not clicking on a table, start panning
+        this.isPanning = true;
+        this.lastPanPoint = { x: screenX, y: screenY };
+        this.canvas.style.cursor = 'grabbing';
         this.selectedTable = null;
         this.render();
     }
@@ -266,10 +244,8 @@ class VenueSimulator {
 
     handleMouseUp(e) {
         this.draggedTable = null;
-        if (this.isPanning) {
-            this.isPanning = false;
-            this.canvas.style.cursor = this.spacePressed ? 'grab' : 'default';
-        }
+        this.isPanning = false;
+        this.canvas.style.cursor = 'grab';
     }
 
     handleDoubleClick(e) {
