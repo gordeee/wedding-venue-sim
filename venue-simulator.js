@@ -17,17 +17,20 @@ class VenueSimulator {
             daisY: 36.5 // 24ft from top + 12.5ft radius = center at 36.5ft
         };
 
-        // Trees positioned according to diagram
-        this.trees = [
-            { x: 5, y: 25 },     // Left tree
-            { x: 50, y: 7 },     // Top right tree
-            { x: 50, y: 20 },    // Middle right tree 1
-            { x: 57, y: 20 },    // Middle right tree 2
-            { x: 50, y: 30 },    // Bottom right tree 1
-            { x: 57, y: 30 }     // Bottom right tree 2
+        // Default tree positions
+        const defaultTrees = [
+            { x: 5, y: 40 },     // Left tree
+            { x: 50, y: 15 },    // Top right tree
+            { x: 57, y: 15 },    // Top right tree 2
+            { x: 50, y: 38 },    // Middle right tree 1
+            { x: 57, y: 38 },    // Middle right tree 2
+            { x: 50, y: 50 }     // Bottom right tree
         ];
 
-        this.tables = [];
+        // Load saved state from localStorage or use defaults
+        this.trees = this.loadFromStorage('trees', defaultTrees);
+        this.tables = this.loadFromStorage('tables', []);
+
         this.selectedTable = null;
         this.draggedTable = null;
         this.selectedTree = null;
@@ -48,6 +51,30 @@ class VenueSimulator {
     init() {
         this.setupEventListeners();
         this.render();
+        this.updateStats();
+    }
+
+    loadFromStorage(key, defaultValue) {
+        try {
+            const stored = localStorage.getItem(`venueSimulator_${key}`);
+            return stored ? JSON.parse(stored) : defaultValue;
+        } catch (e) {
+            console.warn(`Failed to load ${key} from localStorage:`, e);
+            return defaultValue;
+        }
+    }
+
+    saveToStorage(key, value) {
+        try {
+            localStorage.setItem(`venueSimulator_${key}`, JSON.stringify(value));
+        } catch (e) {
+            console.warn(`Failed to save ${key} to localStorage:`, e);
+        }
+    }
+
+    saveLayout() {
+        this.saveToStorage('trees', this.trees);
+        this.saveToStorage('tables', this.tables);
     }
 
     setupEventListeners() {
@@ -71,6 +98,7 @@ class VenueSimulator {
                         this.selectedTable = null;
                         this.render();
                         this.updateStats();
+                        this.saveLayout();
                         e.preventDefault();
                         break;
                     case 'r':
@@ -78,25 +106,30 @@ class VenueSimulator {
                         this.selectedTable.rotation += 90;
                         if (this.selectedTable.rotation >= 360) this.selectedTable.rotation = 0;
                         this.render();
+                        this.saveLayout();
                         break;
                     case 'ArrowUp':
                         this.selectedTable.y -= e.shiftKey ? 0.5 : 1;
                         this.render();
+                        this.saveLayout();
                         e.preventDefault();
                         break;
                     case 'ArrowDown':
                         this.selectedTable.y += e.shiftKey ? 0.5 : 1;
                         this.render();
+                        this.saveLayout();
                         e.preventDefault();
                         break;
                     case 'ArrowLeft':
                         this.selectedTable.x -= e.shiftKey ? 0.5 : 1;
                         this.render();
+                        this.saveLayout();
                         e.preventDefault();
                         break;
                     case 'ArrowRight':
                         this.selectedTable.x += e.shiftKey ? 0.5 : 1;
                         this.render();
+                        this.saveLayout();
                         e.preventDefault();
                         break;
                     case 'Escape':
@@ -112,21 +145,25 @@ class VenueSimulator {
                     case 'ArrowUp':
                         this.selectedTree.y -= e.shiftKey ? 0.5 : 1;
                         this.render();
+                        this.saveLayout();
                         e.preventDefault();
                         break;
                     case 'ArrowDown':
                         this.selectedTree.y += e.shiftKey ? 0.5 : 1;
                         this.render();
+                        this.saveLayout();
                         e.preventDefault();
                         break;
                     case 'ArrowLeft':
                         this.selectedTree.x -= e.shiftKey ? 0.5 : 1;
                         this.render();
+                        this.saveLayout();
                         e.preventDefault();
                         break;
                     case 'ArrowRight':
                         this.selectedTree.x += e.shiftKey ? 0.5 : 1;
                         this.render();
+                        this.saveLayout();
                         e.preventDefault();
                         break;
                     case 'Escape':
@@ -155,6 +192,7 @@ class VenueSimulator {
             this.selectedTable = null;
             this.render();
             this.updateStats();
+            this.saveLayout();
         });
 
         document.getElementById('rotateSelected').addEventListener('click', () => {
@@ -162,6 +200,7 @@ class VenueSimulator {
                 this.selectedTable.rotation += 90;
                 if (this.selectedTable.rotation >= 360) this.selectedTable.rotation = 0;
                 this.render();
+                this.saveLayout();
             }
         });
 
@@ -171,12 +210,42 @@ class VenueSimulator {
                 this.selectedTable = null;
                 this.render();
                 this.updateStats();
+                this.saveLayout();
+            }
+        });
+
+        document.getElementById('resetLayout').addEventListener('click', () => {
+            if (confirm('Reset trees and tables to default positions? This will clear your current layout.')) {
+                this.resetToDefaults();
             }
         });
 
         document.getElementById('exportImage').addEventListener('click', () => {
             this.exportAsImage();
         });
+    }
+
+    resetToDefaults() {
+        // Clear localStorage
+        localStorage.removeItem('venueSimulator_trees');
+        localStorage.removeItem('venueSimulator_tables');
+
+        // Reset to default positions
+        this.trees = [
+            { x: 5, y: 40 },     // Left tree
+            { x: 50, y: 15 },    // Top right tree
+            { x: 57, y: 15 },    // Top right tree 2
+            { x: 50, y: 38 },    // Middle right tree 1
+            { x: 57, y: 38 },    // Middle right tree 2
+            { x: 50, y: 50 }     // Bottom right tree
+        ];
+        this.tables = [];
+        this.selectedTable = null;
+        this.selectedTree = null;
+
+        this.render();
+        this.updateStats();
+        this.saveLayout();
     }
 
     addTable(type, x = null, y = null, rotation = 0) {
@@ -213,6 +282,7 @@ class VenueSimulator {
         this.tables.push(table);
         this.render();
         this.updateStats();
+        this.saveLayout();
         return table;
     }
 
@@ -302,6 +372,11 @@ class VenueSimulator {
     }
 
     handleMouseUp(e) {
+        // Save layout if we were dragging something
+        if (this.draggedTable || this.draggedTree) {
+            this.saveLayout();
+        }
+
         this.draggedTable = null;
         this.draggedTree = null;
         this.isPanning = false;
@@ -324,6 +399,7 @@ class VenueSimulator {
                 table.rotation += 90;
                 if (table.rotation >= 360) table.rotation = 0;
                 this.render();
+                this.saveLayout();
                 return;
             }
         }
@@ -762,6 +838,7 @@ class VenueSimulator {
         this.selectedTable = null;
         this.render();
         this.updateStats();
+        this.saveLayout();
     }
 
     drawZoomIndicator() {
