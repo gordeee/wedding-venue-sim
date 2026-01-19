@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Venue Layout Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            height: fit-content;
+        }
+
+        .section-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+        }
+
+        .table-palette {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .table-item {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: grab;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 0.85em;
+        }
+
+        .table-item:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .table-item:active {
+            cursor: grabbing;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .canvas-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        canvas {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            display: block;
+            cursor: grab;
+            image-rendering: pixelated;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        .info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f4f8;
+            border-radius: 8px;
+            font-size: 0.85em;
+            color: #555;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.75em;
+            color: #666;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎊 Wedding Venue Layout Simulator</h1>
+        <div class="subtitle">Drag and drop tables to create your perfect layout!</div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="section-title">Add Tables</div>
+                <div class="table-palette">
+                    <div class="table-item" data-table-type="banquet8">
+                        📏 8ft Banquet
+                        <div style="font-size: 0.75em; margin-top: 4px;">96" × 30"</div>
+                    </div>
+                    <div class="table-item" data-table-type="banquet6">
+                        📏 6ft Banquet
+                        <div style="font-size: 0.75em; margin-top: 4px;">72" × 30"</div>
+                    </div>
+                    <div class="table-item" data-table-type="serpentine">
+                        🌊 6ft Serpentine
+                        <div style="font-size: 0.75em; margin-top: 4px;">Quarter Circle</div>
+                    </div>
+                </div>
+
+                <div class="section-title">Actions</div>
+                <div class="controls">
+                    <button id="professionalLayout">✨ Professional Layout</button>
+                    <button id="clearTables">🗑️ Clear All Tables</button>
+                    <button id="rotateSelected">🔄 Rotate Selected</button>
+                    <button id="deleteSelected">❌ Delete Selected</button>
+                    <button id="exportImage">📸 Export Image</button>
+                </div>
+
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="tableCount">0</div>
+                        <div class="stat-label">Tables</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="seatCount">0</div>
+                        <div class="stat-label">Seats</div>
+                    </div>
+                </div>
+
+                <div class="info">
+                    💡 <strong>Tips:</strong><br>
+                    • Click palette items to add tables<br>
+                    • Drag tables to move them<br>
+                    • Click table to select/deselect<br>
+                    • Double-click to rotate<br>
+                    <br>
+                    ⌨️ <strong>Shortcuts:</strong><br>
+                    • Arrow keys: Move selected table<br>
+                    • R: Rotate selected table<br>
+                    • Delete/Backspace: Remove table<br>
+                    • Esc: Deselect table
+                </div>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="venueCanvas" width="1000" height="800"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="venue-simulator.js"></script>
+</body>
+</html>
