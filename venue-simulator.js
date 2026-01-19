@@ -31,7 +31,14 @@ class VenueSimulator {
         this.selectedTable = null;
         this.draggedTable = null;
         this.dragOffset = { x: 0, y: 0 };
-        this.viewOffset = { x: 0, y: 0 };
+
+        // Zoom and pan controls
+        this.zoom = 1.0;
+        this.minZoom = 0.3;
+        this.maxZoom = 3.0;
+        this.panOffset = { x: 0, y: 0 };
+        this.isPanning = false;
+        this.lastPanPoint = { x: 0, y: 0 };
 
         this.init();
     }
@@ -47,6 +54,26 @@ class VenueSimulator {
         this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
         this.canvas.addEventListener('dblclick', this.handleDoubleClick.bind(this));
+
+        // Zoom with mouse wheel
+        this.canvas.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+
+        // Track space key for pan mode
+        this.spacePressed = false;
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !e.repeat) {
+                this.spacePressed = true;
+                this.canvas.style.cursor = 'grab';
+                e.preventDefault();
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                this.spacePressed = false;
+                this.isPanning = false;
+                this.canvas.style.cursor = 'grab';
+            }
+        });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -175,8 +202,22 @@ class VenueSimulator {
 
     handleMouseDown(e) {
         const rect = this.canvas.getBoundingClientRect();
-        const mouseX = (e.clientX - rect.left) / SCALE;
-        const mouseY = (e.clientY - rect.top) / SCALE;
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+
+        // Pan mode with space key or middle mouse button
+        if (this.spacePressed || e.button === 1) {
+            this.isPanning = true;
+            this.lastPanPoint = { x: screenX, y: screenY };
+            this.canvas.style.cursor = 'grabbing';
+            e.preventDefault();
+            return;
+        }
+
+        // Convert to world coordinates
+        const worldCoords = this.screenToWorld(screenX, screenY);
+        const mouseX = worldCoords.x;
+        const mouseY = worldCoords.y;
 
         // Check if clicking on a table (check in reverse order for top-most)
         for (let i = this.tables.length - 1; i >= 0; i--) {
@@ -197,26 +238,48 @@ class VenueSimulator {
     }
 
     handleMouseMove(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+
+        // Handle panning
+        if (this.isPanning) {
+            const dx = screenX - this.lastPanPoint.x;
+            const dy = screenY - this.lastPanPoint.y;
+
+            this.panOffset.x += dx;
+            this.panOffset.y += dy;
+
+            this.lastPanPoint = { x: screenX, y: screenY };
+            this.render();
+            return;
+        }
+
+        // Handle table dragging
         if (this.draggedTable) {
-            const rect = this.canvas.getBoundingClientRect();
-            const mouseX = (e.clientX - rect.left) / SCALE;
-            const mouseY = (e.clientY - rect.top) / SCALE;
-
-            this.draggedTable.x = mouseX - this.dragOffset.x;
-            this.draggedTable.y = mouseY - this.dragOffset.y;
-
+            const worldCoords = this.screenToWorld(screenX, screenY);
+            this.draggedTable.x = worldCoords.x - this.dragOffset.x;
+            this.draggedTable.y = worldCoords.y - this.dragOffset.y;
             this.render();
         }
     }
 
     handleMouseUp(e) {
         this.draggedTable = null;
+        if (this.isPanning) {
+            this.isPanning = false;
+            this.canvas.style.cursor = this.spacePressed ? 'grab' : 'default';
+        }
     }
 
     handleDoubleClick(e) {
         const rect = this.canvas.getBoundingClientRect();
-        const mouseX = (e.clientX - rect.left) / SCALE;
-        const mouseY = (e.clientY - rect.top) / SCALE;
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+
+        const worldCoords = this.screenToWorld(screenX, screenY);
+        const mouseX = worldCoords.x;
+        const mouseY = worldCoords.y;
 
         // Check if double-clicking on a table
         for (let i = this.tables.length - 1; i >= 0; i--) {
@@ -228,6 +291,38 @@ class VenueSimulator {
                 return;
             }
         }
+    }
+
+    handleWheel(e) {
+        e.preventDefault();
+
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Get world position before zoom
+        const worldBefore = this.screenToWorld(mouseX, mouseY);
+
+        // Update zoom
+        const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newZoom = this.zoom * zoomDelta;
+        this.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, newZoom));
+
+        // Get world position after zoom
+        const worldAfter = this.screenToWorld(mouseX, mouseY);
+
+        // Adjust pan to keep mouse position steady
+        this.panOffset.x += (worldAfter.x - worldBefore.x) * SCALE * this.zoom;
+        this.panOffset.y += (worldAfter.y - worldBefore.y) * SCALE * this.zoom;
+
+        this.render();
+    }
+
+    screenToWorld(screenX, screenY) {
+        return {
+            x: (screenX - this.panOffset.x) / (SCALE * this.zoom),
+            y: (screenY - this.panOffset.y) / (SCALE * this.zoom)
+        };
     }
 
     isPointInTable(px, py, table) {
@@ -246,6 +341,11 @@ class VenueSimulator {
         this.ctx.fillStyle = '#e8f5e9';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // Save context and apply zoom/pan transformations
+        this.ctx.save();
+        this.ctx.translate(this.panOffset.x, this.panOffset.y);
+        this.ctx.scale(this.zoom, this.zoom);
+
         // Draw grid
         this.drawGrid();
 
@@ -263,6 +363,12 @@ class VenueSimulator {
 
         // Draw measurements (guide lines)
         this.drawMeasurements();
+
+        // Restore context
+        this.ctx.restore();
+
+        // Draw zoom indicator
+        this.drawZoomIndicator();
     }
 
     drawGrid() {
@@ -568,6 +674,20 @@ class VenueSimulator {
         this.selectedTable = null;
         this.render();
         this.updateStats();
+    }
+
+    drawZoomIndicator() {
+        // Draw zoom level in bottom-right corner
+        this.ctx.save();
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        this.ctx.fillRect(this.canvas.width - 100, this.canvas.height - 40, 90, 30);
+
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = '12px Courier New';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(`Zoom: ${Math.round(this.zoom * 100)}%`, this.canvas.width - 55, this.canvas.height - 25);
+        this.ctx.restore();
     }
 
     updateStats() {
