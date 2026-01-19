@@ -4,13 +4,14 @@ An interactive, game-style wedding venue layout tool that lets you visualize and
 
 ## Features
 
-- **Interactive Drag & Drop** - Move tables around with your mouse
+- **Interactive Drag & Drop** - Move tables and trees around with your mouse
+- **Draggable Trees** - Reposition trees to customize your venue layout
 - **Zoom & Pan Controls** - Mouse wheel zoom (30%-300%) and click-drag panning
 - **Multiple Table Types** - 8ft banquet, 6ft banquet, and 6ft serpentine tables
 - **Professional Layouts** - AI-generated optimal table arrangements
 - **Real-time Stats** - Track table count and guest capacity
 - **Game-Style Graphics** - Beautiful top-down 2D rendering inspired by simulation games
-- **Venue Elements** - 25ft circular dais and 6 strategically placed trees
+- **Venue Elements** - 25ft circular dais and 6 repositionable trees
 
 ## Venue Specifications
 
@@ -38,23 +39,24 @@ Based on your venue diagram:
 
 2. **Add Tables**: Click on table types in the left sidebar
 3. **Move Tables**: Click and drag tables to reposition them
-4. **Rotate Tables**: Double-click a table or select it and click "Rotate"
-5. **Delete Tables**: Select a table and click "Delete Selected"
+4. **Move Trees**: Click and drag trees to customize your layout
+5. **Rotate Tables**: Double-click a table or select it and click "Rotate"
+6. **Delete Tables**: Select a table and click "Delete Selected"
 
 ### Navigation Controls
 
 🔍 **Zoom & Pan**:
 - **Mouse Wheel**: Zoom in and out (30% to 300%)
 - **Click & Drag**: Click on empty space and drag to pan the view
-- **Click & Drag Tables**: Click directly on tables to select and move them
+- **Click & Drag Tables/Trees**: Click directly on tables or trees to select and move them
 - Zoom intelligently centers on your mouse cursor position
 - Current zoom level displayed in bottom-right corner
 
 ⌨️ **Keyboard Shortcuts**:
-- **Arrow Keys**: Fine-tune selected table position (hold Shift for 0.5ft increments)
+- **Arrow Keys**: Fine-tune selected table or tree position (hold Shift for 0.5ft increments)
 - **R**: Rotate selected table 90 degrees
 - **Delete/Backspace**: Remove selected table
-- **Esc**: Deselect current table
+- **Esc**: Deselect current table or tree
 
 ### Professional Layout
 
