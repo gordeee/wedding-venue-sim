@@ -17,7 +17,7 @@ An interactive, game-style wedding venue layout tool that lets you visualize and
 Based on your venue diagram:
 - **Dais**: 25ft diameter circular platform (main stage/focal point)
 - **Trees**: 6 trees positioned around the venue
-- **Dimensions**: 62ft × 55ft total space
+- **Dimensions**: 62ft × 67ft total space (24ft above dais, 25ft dais, 18ft below)
 - **Available Tables**:
   - 8ft Banquet Tables (96" × 30") - seats 8
   - 6ft Banquet Tables (72" × 30") - seats 6

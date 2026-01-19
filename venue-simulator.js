@@ -11,10 +11,10 @@ class VenueSimulator {
         // Venue dimensions (in feet, from the diagram)
         this.venue = {
             width: 62,  // 31ft on each side from center
-            height: 55, // 24ft + 31ft from measurements
+            height: 67, // 24ft above + 25ft dais + 18ft below
             daisRadius: 12.5, // 25ft diameter = 12.5ft radius
             daisX: 24,  // 24ft from left edge
-            daisY: 24   // 24ft from top
+            daisY: 36.5 // 24ft from top + 12.5ft radius = center at 36.5ft
         };
 
         // Trees positioned according to diagram
@@ -570,11 +570,13 @@ class VenueSimulator {
         this.ctx.lineWidth = 1;
         this.ctx.setLineDash([5, 3]);
 
-        // 24ft left measurement
-        this.drawDimensionLine(0, this.venue.daisY * SCALE, this.venue.daisX * SCALE, this.venue.daisY * SCALE, '24ft', 'horizontal');
+        // 24ft above dais measurement (vertical)
+        const daisTop = (this.venue.daisY - this.venue.daisRadius) * SCALE;
+        this.drawDimensionLine(this.venue.daisX * SCALE, 0, this.venue.daisX * SCALE, daisTop, '24ft', 'vertical');
 
-        // 31ft top measurement
-        this.drawDimensionLine(this.venue.daisX * SCALE, 0, this.venue.daisX * SCALE, 7 * SCALE, '31ft tree line', 'vertical');
+        // 18ft below dais measurement (vertical)
+        const daisBottom = (this.venue.daisY + this.venue.daisRadius) * SCALE;
+        this.drawDimensionLine(this.venue.daisX * SCALE, daisBottom, this.venue.daisX * SCALE, this.venue.height * SCALE, '18ft', 'vertical');
 
         this.ctx.setLineDash([]);
     }
