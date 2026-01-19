@@ -1,0 +1,615 @@
+// Wedding Venue Simulator - Main JavaScript
+// Scale: 1 foot = 20 pixels
+
+const SCALE = 20; // pixels per foot
+
+class VenueSimulator {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+
+        // Venue dimensions (in feet, from the diagram)
+        this.venue = {
+            width: 62,  // 31ft on each side from center
+            height: 55, // 24ft + 31ft from measurements
+            daisRadius: 12.5, // 25ft diameter = 12.5ft radius
+            daisX: 24,  // 24ft from left edge
+            daisY: 24   // 24ft from top
+        };
+
+        // Trees positioned according to diagram
+        this.trees = [
+            { x: 5, y: 25 },     // Left tree
+            { x: 50, y: 7 },     // Top right tree
+            { x: 50, y: 20 },    // Middle right tree 1
+            { x: 57, y: 20 },    // Middle right tree 2
+            { x: 50, y: 30 },    // Bottom right tree 1
+            { x: 57, y: 30 }     // Bottom right tree 2
+        ];
+
+        this.tables = [];
+        this.selectedTable = null;
+        this.draggedTable = null;
+        this.dragOffset = { x: 0, y: 0 };
+        this.viewOffset = { x: 0, y: 0 };
+
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.render();
+    }
+
+    setupEventListeners() {
+        // Canvas mouse events for dragging tables
+        this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+        this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        this.canvas.addEventListener('dblclick', this.handleDoubleClick.bind(this));
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (!this.selectedTable) return;
+
+            switch(e.key) {
+                case 'Delete':
+                case 'Backspace':
+                    this.tables = this.tables.filter(t => t !== this.selectedTable);
+                    this.selectedTable = null;
+                    this.render();
+                    this.updateStats();
+                    e.preventDefault();
+                    break;
+                case 'r':
+                case 'R':
+                    this.selectedTable.rotation += 90;
+                    if (this.selectedTable.rotation >= 360) this.selectedTable.rotation = 0;
+                    this.render();
+                    break;
+                case 'ArrowUp':
+                    this.selectedTable.y -= e.shiftKey ? 0.5 : 1;
+                    this.render();
+                    e.preventDefault();
+                    break;
+                case 'ArrowDown':
+                    this.selectedTable.y += e.shiftKey ? 0.5 : 1;
+                    this.render();
+                    e.preventDefault();
+                    break;
+                case 'ArrowLeft':
+                    this.selectedTable.x -= e.shiftKey ? 0.5 : 1;
+                    this.render();
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                    this.selectedTable.x += e.shiftKey ? 0.5 : 1;
+                    this.render();
+                    e.preventDefault();
+                    break;
+                case 'Escape':
+                    this.selectedTable = null;
+                    this.render();
+                    break;
+            }
+        });
+
+        // Table palette - add tables
+        document.querySelectorAll('.table-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const tableType = e.currentTarget.dataset.tableType;
+                this.addTable(tableType);
+            });
+        });
+
+        // Control buttons
+        document.getElementById('professionalLayout').addEventListener('click', () => {
+            this.createProfessionalLayout();
+        });
+
+        document.getElementById('clearTables').addEventListener('click', () => {
+            this.tables = [];
+            this.selectedTable = null;
+            this.render();
+            this.updateStats();
+        });
+
+        document.getElementById('rotateSelected').addEventListener('click', () => {
+            if (this.selectedTable) {
+                this.selectedTable.rotation += 90;
+                if (this.selectedTable.rotation >= 360) this.selectedTable.rotation = 0;
+                this.render();
+            }
+        });
+
+        document.getElementById('deleteSelected').addEventListener('click', () => {
+            if (this.selectedTable) {
+                this.tables = this.tables.filter(t => t !== this.selectedTable);
+                this.selectedTable = null;
+                this.render();
+                this.updateStats();
+            }
+        });
+
+        document.getElementById('exportImage').addEventListener('click', () => {
+            this.exportAsImage();
+        });
+    }
+
+    addTable(type, x = null, y = null, rotation = 0) {
+        const table = {
+            type: type,
+            x: x !== null ? x : this.venue.daisX + 20,
+            y: y !== null ? y : this.venue.daisY,
+            rotation: rotation,
+            id: Date.now() + Math.random()
+        };
+
+        // Set dimensions and seating based on type
+        switch(type) {
+            case 'banquet8':
+                table.width = 8;
+                table.height = 2.5;
+                table.seats = 8;
+                table.shape = 'rectangle';
+                break;
+            case 'banquet6':
+                table.width = 6;
+                table.height = 2.5;
+                table.seats = 6;
+                table.shape = 'rectangle';
+                break;
+            case 'serpentine':
+                table.width = 6;
+                table.height = 6;
+                table.seats = 4;
+                table.shape = 'serpentine';
+                break;
+        }
+
+        this.tables.push(table);
+        this.render();
+        this.updateStats();
+        return table;
+    }
+
+    handleMouseDown(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left) / SCALE;
+        const mouseY = (e.clientY - rect.top) / SCALE;
+
+        // Check if clicking on a table (check in reverse order for top-most)
+        for (let i = this.tables.length - 1; i >= 0; i--) {
+            const table = this.tables[i];
+            if (this.isPointInTable(mouseX, mouseY, table)) {
+                this.draggedTable = table;
+                this.selectedTable = table;
+                this.dragOffset.x = mouseX - table.x;
+                this.dragOffset.y = mouseY - table.y;
+                this.render();
+                return;
+            }
+        }
+
+        // If not clicking on a table, deselect
+        this.selectedTable = null;
+        this.render();
+    }
+
+    handleMouseMove(e) {
+        if (this.draggedTable) {
+            const rect = this.canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left) / SCALE;
+            const mouseY = (e.clientY - rect.top) / SCALE;
+
+            this.draggedTable.x = mouseX - this.dragOffset.x;
+            this.draggedTable.y = mouseY - this.dragOffset.y;
+
+            this.render();
+        }
+    }
+
+    handleMouseUp(e) {
+        this.draggedTable = null;
+    }
+
+    handleDoubleClick(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left) / SCALE;
+        const mouseY = (e.clientY - rect.top) / SCALE;
+
+        // Check if double-clicking on a table
+        for (let i = this.tables.length - 1; i >= 0; i--) {
+            const table = this.tables[i];
+            if (this.isPointInTable(mouseX, mouseY, table)) {
+                table.rotation += 90;
+                if (table.rotation >= 360) table.rotation = 0;
+                this.render();
+                return;
+            }
+        }
+    }
+
+    isPointInTable(px, py, table) {
+        // Simple bounding box check (could be improved for rotated tables)
+        const halfWidth = table.width / 2;
+        const halfHeight = table.height / 2;
+
+        return px >= table.x - halfWidth &&
+               px <= table.x + halfWidth &&
+               py >= table.y - halfHeight &&
+               py <= table.y + halfHeight;
+    }
+
+    render() {
+        // Clear canvas
+        this.ctx.fillStyle = '#e8f5e9';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw grid
+        this.drawGrid();
+
+        // Draw venue boundary
+        this.drawVenueBoundary();
+
+        // Draw dais
+        this.drawDais();
+
+        // Draw trees
+        this.drawTrees();
+
+        // Draw tables
+        this.drawTables();
+
+        // Draw measurements (guide lines)
+        this.drawMeasurements();
+    }
+
+    drawGrid() {
+        this.ctx.strokeStyle = '#d0e8d0';
+        this.ctx.lineWidth = 0.5;
+
+        // Draw vertical lines every 5 feet
+        for (let x = 0; x <= this.venue.width; x += 5) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(x * SCALE, 0);
+            this.ctx.lineTo(x * SCALE, this.canvas.height);
+            this.ctx.stroke();
+        }
+
+        // Draw horizontal lines every 5 feet
+        for (let y = 0; y <= this.venue.height; y += 5) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y * SCALE);
+            this.ctx.lineTo(this.canvas.width, y * SCALE);
+            this.ctx.stroke();
+        }
+    }
+
+    drawVenueBoundary() {
+        this.ctx.strokeStyle = '#888';
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([10, 5]);
+        this.ctx.strokeRect(0, 0, this.venue.width * SCALE, this.venue.height * SCALE);
+        this.ctx.setLineDash([]);
+    }
+
+    drawDais() {
+        // Draw circular dais (stage/platform)
+        this.ctx.fillStyle = '#f5f5f5';
+        this.ctx.strokeStyle = '#666';
+        this.ctx.lineWidth = 3;
+
+        this.ctx.beginPath();
+        this.ctx.arc(
+            this.venue.daisX * SCALE,
+            this.venue.daisY * SCALE,
+            this.venue.daisRadius * SCALE,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        // Add texture/pattern to dais
+        this.ctx.fillStyle = '#e0e0e0';
+        for (let i = 0; i < 8; i++) {
+            const angle = (Math.PI * 2 / 8) * i;
+            const x = this.venue.daisX * SCALE + Math.cos(angle) * (this.venue.daisRadius * SCALE * 0.7);
+            const y = this.venue.daisY * SCALE + Math.sin(angle) * (this.venue.daisRadius * SCALE * 0.7);
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+
+        // Label
+        this.ctx.fillStyle = '#666';
+        this.ctx.font = 'bold 14px Courier New';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('DAIS', this.venue.daisX * SCALE, this.venue.daisY * SCALE + 5);
+        this.ctx.font = '10px Courier New';
+        this.ctx.fillText('25ft diameter', this.venue.daisX * SCALE, this.venue.daisY * SCALE + 20);
+    }
+
+    drawTrees() {
+        this.trees.forEach(tree => {
+            const x = tree.x * SCALE;
+            const y = tree.y * SCALE;
+
+            // Tree canopy (dark green circle)
+            this.ctx.fillStyle = '#2d5016';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 15, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Tree canopy (lighter green)
+            this.ctx.fillStyle = '#4a7c2c';
+            this.ctx.beginPath();
+            this.ctx.arc(x - 3, y - 3, 12, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Tree highlights
+            this.ctx.fillStyle = '#6ba83e';
+            this.ctx.beginPath();
+            this.ctx.arc(x - 5, y - 5, 6, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Trunk
+            this.ctx.fillStyle = '#5d4037';
+            this.ctx.fillRect(x - 3, y + 8, 6, 10);
+        });
+    }
+
+    drawTables() {
+        this.tables.forEach(table => {
+            this.ctx.save();
+            this.ctx.translate(table.x * SCALE, table.y * SCALE);
+            this.ctx.rotate((table.rotation * Math.PI) / 180);
+
+            const isSelected = table === this.selectedTable;
+
+            if (table.shape === 'serpentine') {
+                this.drawSerpentineTable(table, isSelected);
+            } else {
+                this.drawRectangleTable(table, isSelected);
+            }
+
+            this.ctx.restore();
+        });
+    }
+
+    drawRectangleTable(table, isSelected) {
+        const w = table.width * SCALE;
+        const h = table.height * SCALE;
+
+        // Shadow
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        this.ctx.fillRect(-w/2 + 3, -h/2 + 3, w, h);
+
+        // Table top
+        this.ctx.fillStyle = isSelected ? '#ffd54f' : '#8d6e63';
+        this.ctx.strokeStyle = isSelected ? '#ff6f00' : '#5d4037';
+        this.ctx.lineWidth = isSelected ? 3 : 2;
+        this.ctx.fillRect(-w/2, -h/2, w, h);
+        this.ctx.strokeRect(-w/2, -h/2, w, h);
+
+        // Wood grain effect
+        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.lineWidth = 1;
+        for (let i = -w/2; i < w/2; i += 10) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(i, -h/2);
+            this.ctx.lineTo(i, h/2);
+            this.ctx.stroke();
+        }
+
+        // Draw chairs
+        this.drawChairs(table);
+
+        // Label
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = 'bold 10px Courier New';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(table.type === 'banquet8' ? '8ft' : '6ft', 0, 0);
+    }
+
+    drawSerpentineTable(table, isSelected) {
+        const radius = table.width * SCALE;
+
+        // Shadow
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        this.ctx.beginPath();
+        this.ctx.arc(3, 3, radius, 0, Math.PI / 2);
+        this.ctx.lineTo(3, 3);
+        this.ctx.fill();
+
+        // Table top
+        this.ctx.fillStyle = isSelected ? '#ffd54f' : '#8d6e63';
+        this.ctx.strokeStyle = isSelected ? '#ff6f00' : '#5d4037';
+        this.ctx.lineWidth = isSelected ? 3 : 2;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, radius, 0, Math.PI / 2);
+        this.ctx.lineTo(0, 0);
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        // Curved grain effect
+        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.lineWidth = 1;
+        for (let r = radius * 0.3; r < radius; r += 15) {
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, r, 0, Math.PI / 2);
+            this.ctx.stroke();
+        }
+
+        // Label
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = 'bold 9px Courier New';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('SERP', radius * 0.4, radius * 0.4);
+    }
+
+    drawChairs(table) {
+        const w = table.width * SCALE;
+        const h = table.height * SCALE;
+        const chairSize = 12;
+        const chairOffset = 18;
+
+        this.ctx.fillStyle = '#424242';
+        this.ctx.strokeStyle = '#212121';
+        this.ctx.lineWidth = 1;
+
+        // Calculate chair positions based on table type
+        const seatsPerSide = table.seats / 2;
+        const spacing = w / (seatsPerSide + 1);
+
+        // Chairs on top
+        for (let i = 1; i <= seatsPerSide; i++) {
+            const x = -w/2 + spacing * i;
+            const y = -h/2 - chairOffset;
+            this.ctx.fillRect(x - chairSize/2, y - chairSize/2, chairSize, chairSize);
+            this.ctx.strokeRect(x - chairSize/2, y - chairSize/2, chairSize, chairSize);
+        }
+
+        // Chairs on bottom
+        for (let i = 1; i <= seatsPerSide; i++) {
+            const x = -w/2 + spacing * i;
+            const y = h/2 + chairOffset;
+            this.ctx.fillRect(x - chairSize/2, y - chairSize/2, chairSize, chairSize);
+            this.ctx.strokeRect(x - chairSize/2, y - chairSize/2, chairSize, chairSize);
+        }
+    }
+
+    drawMeasurements() {
+        this.ctx.strokeStyle = '#999';
+        this.ctx.fillStyle = '#666';
+        this.ctx.font = '11px Courier New';
+        this.ctx.lineWidth = 1;
+        this.ctx.setLineDash([5, 3]);
+
+        // 24ft left measurement
+        this.drawDimensionLine(0, this.venue.daisY * SCALE, this.venue.daisX * SCALE, this.venue.daisY * SCALE, '24ft', 'horizontal');
+
+        // 31ft top measurement
+        this.drawDimensionLine(this.venue.daisX * SCALE, 0, this.venue.daisX * SCALE, 7 * SCALE, '31ft tree line', 'vertical');
+
+        this.ctx.setLineDash([]);
+    }
+
+    drawDimensionLine(x1, y1, x2, y2, label, orientation) {
+        this.ctx.beginPath();
+        this.ctx.moveTo(x1, y1);
+        this.ctx.lineTo(x2, y2);
+        this.ctx.stroke();
+
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+
+        this.ctx.fillStyle = 'white';
+        this.ctx.fillRect(midX - 25, midY - 8, 50, 16);
+        this.ctx.fillStyle = '#666';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(label, midX, midY + 4);
+    }
+
+    createProfessionalLayout() {
+        // Clear existing tables
+        this.tables = [];
+
+        // Professional wedding layout strategy:
+        // 1. Maximize sightlines to the dais
+        // 2. Create aisles for easy movement
+        // 3. Avoid placing tables behind trees
+        // 4. Maintain proper spacing (3ft minimum between tables)
+        // 5. Use a mix of table types for visual interest
+
+        const daisX = this.venue.daisX;
+        const daisY = this.venue.daisY;
+        const daisR = this.venue.daisRadius;
+
+        // Configuration for professional layout
+        const minClearance = 3; // feet from dais
+        const tableSpacing = 4; // feet between tables
+        const aisleWidth = 5; // feet for main aisles
+
+        // SECTION 1: Front section (close to dais, premium seating)
+        // Two 8ft tables flanking the front
+        this.addTable('banquet8', daisX - 10, daisY + daisR + minClearance + 1.25, 0);
+        this.addTable('banquet8', daisX + 10, daisY + daisR + minClearance + 1.25, 0);
+
+        // SECTION 2: Mid-right section (avoiding trees on right)
+        // Use 6ft tables in this area to work around trees
+        this.addTable('banquet6', daisX + 15, daisY + daisR + minClearance + 6, 0);
+        this.addTable('banquet6', daisX + 15, daisY + daisR + minClearance + 12, 0);
+
+        // SECTION 3: Mid-left section (open area)
+        // 8ft tables for maximum seating
+        this.addTable('banquet8', daisX - 15, daisY + daisR + minClearance + 6, 0);
+        this.addTable('banquet8', daisX - 15, daisY + daisR + minClearance + 12, 0);
+
+        // SECTION 4: Back section (farther from dais)
+        // Create a nice arc pattern
+        this.addTable('banquet8', daisX - 12, daisY + daisR + minClearance + 18, 0);
+        this.addTable('banquet8', daisX + 12, daisY + daisR + minClearance + 18, 0);
+
+        // SECTION 5: Side sections using serpentines for visual interest
+        // Left side
+        this.addTable('serpentine', daisX - 22, daisY + daisR + 8, 180);
+
+        // Right side (avoiding trees)
+        this.addTable('serpentine', daisX + 25, daisY + daisR + 8, 270);
+
+        // SECTION 6: Additional seating if space allows
+        // Back corners
+        this.addTable('banquet6', daisX - 18, daisY + daisR + minClearance + 24, 0);
+        this.addTable('banquet6', daisX + 8, daisY + daisR + minClearance + 24, 0);
+
+        this.selectedTable = null;
+        this.render();
+        this.updateStats();
+    }
+
+    updateStats() {
+        const totalTables = this.tables.length;
+        const totalSeats = this.tables.reduce((sum, table) => sum + table.seats, 0);
+
+        document.getElementById('tableCount').textContent = totalTables;
+        document.getElementById('seatCount').textContent = totalSeats;
+    }
+
+    exportAsImage() {
+        // Temporarily deselect to export clean image
+        const wasSelected = this.selectedTable;
+        this.selectedTable = null;
+        this.render();
+
+        // Create download link
+        const link = document.createElement('a');
+        link.download = 'wedding-venue-layout.png';
+        link.href = this.canvas.toDataURL('image/png');
+        link.click();
+
+        // Restore selection
+        this.selectedTable = wasSelected;
+        this.render();
+
+        // Show feedback
+        const button = document.getElementById('exportImage');
+        const originalText = button.textContent;
+        button.textContent = '✅ Exported!';
+        button.style.background = '#4caf50';
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.style.background = '';
+        }, 2000);
+    }
+}
+
+// Initialize the simulator when the page loads
+window.addEventListener('DOMContentLoaded', () => {
+    const simulator = new VenueSimulator('venueCanvas');
+
+    // Optional: Load professional layout by default
+    // simulator.createProfessionalLayout();
+});

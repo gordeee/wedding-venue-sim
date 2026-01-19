@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Venue Layout Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            height: fit-content;
+        }
+
+        .section-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+        }
+
+        .table-palette {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .table-item {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: grab;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 0.85em;
+        }
+
+        .table-item:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .table-item:active {
+            cursor: grabbing;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .canvas-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        canvas {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            display: block;
+            cursor: grab;
+            image-rendering: pixelated;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        .info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f4f8;
+            border-radius: 8px;
+            font-size: 0.85em;
+            color: #555;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.75em;
+            color: #666;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎊 Wedding Venue Layout Simulator</h1>
+        <div class="subtitle">Drag and drop tables to create your perfect layout!</div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="section-title">Add Tables</div>
+                <div class="table-palette">
+                    <div class="table-item" data-table-type="banquet8">
+                        📏 8ft Banquet
+                        <div style="font-size: 0.75em; margin-top: 4px;">96" × 30"</div>
+                    </div>
+                    <div class="table-item" data-table-type="banquet6">
+                        📏 6ft Banquet
+                        <div style="font-size: 0.75em; margin-top: 4px;">72" × 30"</div>
+                    </div>
+                    <div class="table-item" data-table-type="serpentine">
+                        🌊 6ft Serpentine
+                        <div style="font-size: 0.75em; margin-top: 4px;">Quarter Circle</div>
+                    </div>
+                </div>
+
+                <div class="section-title">Actions</div>
+                <div class="controls">
+                    <button id="professionalLayout">✨ Professional Layout</button>
+                    <button id="clearTables">🗑️ Clear All Tables</button>
+                    <button id="rotateSelected">🔄 Rotate Selected</button>
+                    <button id="deleteSelected">❌ Delete Selected</button>
+                    <button id="exportImage">📸 Export Image</button>
+                </div>
+
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="tableCount">0</div>
+                        <div class="stat-label">Tables</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="seatCount">0</div>
+                        <div class="stat-label">Seats</div>
+                    </div>
+                </div>
+
+                <div class="info">
+                    💡 <strong>Tips:</strong><br>
+                    • Click palette items to add tables<br>
+                    • Drag tables to move them<br>
+                    • Click table to select/deselect<br>
+                    • Double-click to rotate<br>
+                    <br>
+                    ⌨️ <strong>Shortcuts:</strong><br>
+                    • Arrow keys: Move selected table<br>
+                    • R: Rotate selected table<br>
+                    • Delete/Backspace: Remove table<br>
+                    • Esc: Deselect table
+                </div>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="venueCanvas" width="1000" height="800"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+// Wedding Venue Simulator - All-in-One Version
+// Scale: 1 foot = 20 pixels
+
+const SCALE = 20; // pixels per foot
+
+class VenueSimulator {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+
+        this.venue = {
+            width: 62,
+            height: 55,
+            daisRadius: 12.5,
+            daisX: 24,
+            daisY: 24
+        };
+
+        this.trees = [
+            { x: 5, y: 25 },
+            { x: 50, y: 7 },
+            { x: 50, y: 20 },
+            { x: 57, y: 20 },
+            { x: 50, y: 30 },
+            { x: 57, y: 30 }
+        ];
+
+        this.tables = [];
+        this.selectedTable = null;
+        this.draggedTable = null;
+        this.dragOffset = { x: 0, y: 0 };
+
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.render();
+    }
+
+    setupEventListeners() {
+        this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+        this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        this.canvas.addEventListener('dblclick', this.handleDoubleClick.bind(this));
+
+        document.addEventListener('keydown', (e) => {
+            if (!this.selectedTable) return;
+
+            switch(e.key) {
+                case 'Delete':
+                case 'Backspace':
+                    this.tables = this.tables.filter(t => t !== this.selectedTable);
+                    this.selectedTable = null;
+                    this.render();
+                    this.updateStats();
+                    e.preventDefault();
+                    break;
+                case 'r':
+                case 'R':
+                    this.selectedTable.rotation += 90;
+                    if (this.selectedTable.rotation >= 360) this.selectedTable.rotation = 0;
+                    this.render();
+                    break;
+                case 'ArrowUp':
+                    this.selectedTable.y -= e.shiftKey ? 0.5 : 1;
+                    this.render();
+                    e.preventDefault();
+                    break;
+                case 'ArrowDown':
+                    this.selectedTable.y += e.shiftKey ? 0.5 : 1;
+                    this.render();
+                    e.preventDefault();
+                    break;
+                case 'ArrowLeft':
+                    this.selectedTable.x -= e.shiftKey ? 0.5 : 1;
+                    this.render();
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                    this.selectedTable.x += e.shiftKey ? 0.5 : 1;
+                    this.render();
+                    e.preventDefault();
+                    break;
+                case 'Escape':
+                    this.selectedTable = null;
+                    this.render();
+                    break;
+            }
+        });
+
+        document.querySelectorAll('.table-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const tableType = e.currentTarget.dataset.tableType;
+                this.addTable(tableType);
+            });
+        });
+
+        document.getElementById('professionalLayout').addEventListener('click', () => {
+            this.createProfessionalLayout();
+        });
+
+        document.getElementById('clearTables').addEventListener('click', () => {
+            this.tables = [];
+            this.selectedTable = null;
+            this.render();
+            this.updateStats();
+        });
+
+        document.getElementById('rotateSelected').addEventListener('click', () => {
+            if (this.selectedTable) {
+                this.selectedTable.rotation += 90;
+                if (this.selectedTable.rotation >= 360) this.selectedTable.rotation = 0;
+                this.render();
+            }
+        });
+
+        document.getElementById('deleteSelected').addEventListener('click', () => {
+            if (this.selectedTable) {
+                this.tables = this.tables.filter(t => t !== this.selectedTable);
+                this.selectedTable = null;
+                this.render();
+                this.updateStats();
+            }
+        });
+
+        document.getElementById('exportImage').addEventListener('click', () => {
+            this.exportAsImage();
+        });
+    }
+
+    addTable(type, x = null, y = null, rotation = 0) {
+        const table = {
+            type: type,
+            x: x !== null ? x : this.venue.daisX + 20,
+            y: y !== null ? y : this.venue.daisY,
+            rotation: rotation,
+            id: Date.now() + Math.random()
+        };
+
+        switch(type) {
+            case 'banquet8':
+                table.width = 8;
+                table.height = 2.5;
+                table.seats = 8;
+                table.shape = 'rectangle';
+                break;
+            case 'banquet6':
+                table.width = 6;
+                table.height = 2.5;
+                table.seats = 6;
+                table.shape = 'rectangle';
+                break;
+            case 'serpentine':
+                table.width = 6;
+                table.height = 6;
+                table.seats = 4;
+                table.shape = 'serpentine';
+                break;
+        }
+
+        this.tables.push(table);
+        this.render();
+        this.updateStats();
+        return table;
+    }
+
+    handleMouseDown(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left) / SCALE;
+        const mouseY = (e.clientY - rect.top) / SCALE;
+
+        for (let i = this.tables.length - 1; i >= 0; i--) {
+            const table = this.tables[i];
+            if (this.isPointInTable(mouseX, mouseY, table)) {
+                this.draggedTable = table;
+                this.selectedTable = table;
+                this.dragOffset.x = mouseX - table.x;
+                this.dragOffset.y = mouseY - table.y;
+                this.render();
+                return;
+            }
+        }
+
+        this.selectedTable = null;
+        this.render();
+    }
+
+    handleMouseMove(e) {
+        if (this.draggedTable) {
+            const rect = this.canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left) / SCALE;
+            const mouseY = (e.clientY - rect.top) / SCALE;
+
+            this.draggedTable.x = mouseX - this.dragOffset.x;
+            this.draggedTable.y = mouseY - this.dragOffset.y;
+
+            this.render();
+        }
+    }
+
+    handleMouseUp(e) {
+        this.draggedTable = null;
+    }
+
+    handleDoubleClick(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left) / SCALE;
+        const mouseY = (e.clientY - rect.top) / SCALE;
+
+        for (let i = this.tables.length - 1; i >= 0; i--) {
+            const table = this.tables[i];
+            if (this.isPointInTable(mouseX, mouseY, table)) {
+                table.rotation += 90;
+                if (table.rotation >= 360) table.rotation = 0;
+                this.render();
+                return;
+            }
+        }
+    }
+
+    isPointInTable(px, py, table) {
+        const halfWidth = table.width / 2;
+        const halfHeight = table.height / 2;
+
+        return px >= table.x - halfWidth &&
+               px <= table.x + halfWidth &&
+               py >= table.y - halfHeight &&
+               py <= table.y + halfHeight;
+    }
+
+    render() {
+        this.ctx.fillStyle = '#e8f5e9';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.drawGrid();
+        this.drawVenueBoundary();
+        this.drawDais();
+        this.drawTrees();
+        this.drawTables();
+        this.drawMeasurements();
+    }
+
+    drawGrid() {
+        this.ctx.strokeStyle = '#d0e8d0';
+        this.ctx.lineWidth = 0.5;
+
+        for (let x = 0; x <= this.venue.width; x += 5) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(x * SCALE, 0);
+            this.ctx.lineTo(x * SCALE, this.canvas.height);
+            this.ctx.stroke();
+        }
+
+        for (let y = 0; y <= this.venue.height; y += 5) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y * SCALE);
+            this.ctx.lineTo(this.canvas.width, y * SCALE);
+            this.ctx.stroke();
+        }
+    }
+
+    drawVenueBoundary() {
+        this.ctx.strokeStyle = '#888';
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([10, 5]);
+        this.ctx.strokeRect(0, 0, this.venue.width * SCALE, this.venue.height * SCALE);
+        this.ctx.setLineDash([]);
+    }
+
+    drawDais() {
+        this.ctx.fillStyle = '#f5f5f5';
+        this.ctx.strokeStyle = '#666';
+        this.ctx.lineWidth = 3;
+
+        this.ctx.beginPath();
+        this.ctx.arc(
+            this.venue.daisX * SCALE,
+            this.venue.daisY * SCALE,
+            this.venue.daisRadius * SCALE,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        this.ctx.fillStyle = '#e0e0e0';
+        for (let i = 0; i < 8; i++) {
+            const angle = (Math.PI * 2 / 8) * i;
+            const x = this.venue.daisX * SCALE + Math.cos(angle) * (this.venue.daisRadius * SCALE * 0.7);
+            const y = this.venue.daisY * SCALE + Math.sin(angle) * (this.venue.daisRadius * SCALE * 0.7);
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+
+        this.ctx.fillStyle = '#666';
+        this.ctx.font = 'bold 14px Courier New';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('DAIS', this.venue.daisX * SCALE, this.venue.daisY * SCALE + 5);
+        this.ctx.font = '10px Courier New';
+        this.ctx.fillText('25ft diameter', this.venue.daisX * SCALE, this.venue.daisY * SCALE + 20);
+    }
+
+    drawTrees() {
+        this.trees.forEach(tree => {
+            const x = tree.x * SCALE;
+            const y = tree.y * SCALE;
+
+            this.ctx.fillStyle = '#2d5016';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 15, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.fillStyle = '#4a7c2c';
+            this.ctx.beginPath();
+            this.ctx.arc(x - 3, y - 3, 12, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.fillStyle = '#6ba83e';
+            this.ctx.beginPath();
+            this.ctx.arc(x - 5, y - 5, 6, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.fillStyle = '#5d4037';
+            this.ctx.fillRect(x - 3, y + 8, 6, 10);
+        });
+    }
+
+    drawTables() {
+        this.tables.forEach(table => {
+            this.ctx.save();
+            this.ctx.translate(table.x * SCALE, table.y * SCALE);
+            this.ctx.rotate((table.rotation * Math.PI) / 180);
+
+            const isSelected = table === this.selectedTable;
+
+            if (table.shape === 'serpentine') {
+                this.drawSerpentineTable(table, isSelected);
+            } else {
+                this.drawRectangleTable(table, isSelected);
+            }
+
+            this.ctx.restore();
+        });
+    }
+
+    drawRectangleTable(table, isSelected) {
+        const w = table.width * SCALE;
+        const h = table.height * SCALE;
+
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        this.ctx.fillRect(-w/2 + 3, -h/2 + 3, w, h);
+
+        this.ctx.fillStyle = isSelected ? '#ffd54f' : '#8d6e63';
+        this.ctx.strokeStyle = isSelected ? '#ff6f00' : '#5d4037';
+        this.ctx.lineWidth = isSelected ? 3 : 2;
+        this.ctx.fillRect(-w/2, -h/2, w, h);
+        this.ctx.strokeRect(-w/2, -h/2, w, h);
+
+        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.lineWidth = 1;
+        for (let i = -w/2; i < w/2; i += 10) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(i, -h/2);
+            this.ctx.lineTo(i, h/2);
+            this.ctx.stroke();
+        }
+
+        this.drawChairs(table);
+
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = 'bold 10px Courier New';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(table.type === 'banquet8' ? '8ft' : '6ft', 0, 0);
+    }
+
+    drawSerpentineTable(table, isSelected) {
+        const radius = table.width * SCALE;
+
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        this.ctx.beginPath();
+        this.ctx.arc(3, 3, radius, 0, Math.PI / 2);
+        this.ctx.lineTo(3, 3);
+        this.ctx.fill();
+
+        this.ctx.fillStyle = isSelected ? '#ffd54f' : '#8d6e63';
+        this.ctx.strokeStyle = isSelected ? '#ff6f00' : '#5d4037';
+        this.ctx.lineWidth = isSelected ? 3 : 2;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, radius, 0, Math.PI / 2);
+        this.ctx.lineTo(0, 0);
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.lineWidth = 1;
+        for (let r = radius * 0.3; r < radius; r += 15) {
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, r, 0, Math.PI / 2);
+            this.ctx.stroke();
+        }
+
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = 'bold 9px Courier New';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('SERP', radius * 0.4, radius * 0.4);
+    }
+
+    drawChairs(table) {
+        const w = table.width * SCALE;
+        const h = table.height * SCALE;
+        const chairSize = 12;
+        const chairOffset = 18;
+
+        this.ctx.fillStyle = '#424242';
+        this.ctx.strokeStyle = '#212121';
+        this.ctx.lineWidth = 1;
+
+        const seatsPerSide = table.seats / 2;
+        const spacing = w / (seatsPerSide + 1);
+
+        for (let i = 1; i <= seatsPerSide; i++) {
+            const x = -w/2 + spacing * i;
+            const y = -h/2 - chairOffset;
+            this.ctx.fillRect(x - chairSize/2, y - chairSize/2, chairSize, chairSize);
+            this.ctx.strokeRect(x - chairSize/2, y - chairSize/2, chairSize, chairSize);
+        }
+
+        for (let i = 1; i <= seatsPerSide; i++) {
+            const x = -w/2 + spacing * i;
+            const y = h/2 + chairOffset;
+            this.ctx.fillRect(x - chairSize/2, y - chairSize/2, chairSize, chairSize);
+            this.ctx.strokeRect(x - chairSize/2, y - chairSize/2, chairSize, chairSize);
+        }
+    }
+
+    drawMeasurements() {
+        this.ctx.strokeStyle = '#999';
+        this.ctx.fillStyle = '#666';
+        this.ctx.font = '11px Courier New';
+        this.ctx.lineWidth = 1;
+        this.ctx.setLineDash([5, 3]);
+
+        this.drawDimensionLine(0, this.venue.daisY * SCALE, this.venue.daisX * SCALE, this.venue.daisY * SCALE, '24ft', 'horizontal');
+        this.drawDimensionLine(this.venue.daisX * SCALE, 0, this.venue.daisX * SCALE, 7 * SCALE, '31ft tree line', 'vertical');
+
+        this.ctx.setLineDash([]);
+    }
+
+    drawDimensionLine(x1, y1, x2, y2, label, orientation) {
+        this.ctx.beginPath();
+        this.ctx.moveTo(x1, y1);
+        this.ctx.lineTo(x2, y2);
+        this.ctx.stroke();
+
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+
+        this.ctx.fillStyle = 'white';
+        this.ctx.fillRect(midX - 25, midY - 8, 50, 16);
+        this.ctx.fillStyle = '#666';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(label, midX, midY + 4);
+    }
+
+    createProfessionalLayout() {
+        this.tables = [];
+
+        const daisX = this.venue.daisX;
+        const daisY = this.venue.daisY;
+        const daisR = this.venue.daisRadius;
+        const minClearance = 3;
+
+        this.addTable('banquet8', daisX - 10, daisY + daisR + minClearance + 1.25, 0);
+        this.addTable('banquet8', daisX + 10, daisY + daisR + minClearance + 1.25, 0);
+        this.addTable('banquet6', daisX + 15, daisY + daisR + minClearance + 6, 0);
+        this.addTable('banquet6', daisX + 15, daisY + daisR + minClearance + 12, 0);
+        this.addTable('banquet8', daisX - 15, daisY + daisR + minClearance + 6, 0);
+        this.addTable('banquet8', daisX - 15, daisY + daisR + minClearance + 12, 0);
+        this.addTable('banquet8', daisX - 12, daisY + daisR + minClearance + 18, 0);
+        this.addTable('banquet8', daisX + 12, daisY + daisR + minClearance + 18, 0);
+        this.addTable('serpentine', daisX - 22, daisY + daisR + 8, 180);
+        this.addTable('serpentine', daisX + 25, daisY + daisR + 8, 270);
+        this.addTable('banquet6', daisX - 18, daisY + daisR + minClearance + 24, 0);
+        this.addTable('banquet6', daisX + 8, daisY + daisR + minClearance + 24, 0);
+
+        this.selectedTable = null;
+        this.render();
+        this.updateStats();
+    }
+
+    updateStats() {
+        const totalTables = this.tables.length;
+        const totalSeats = this.tables.reduce((sum, table) => sum + table.seats, 0);
+
+        document.getElementById('tableCount').textContent = totalTables;
+        document.getElementById('seatCount').textContent = totalSeats;
+    }
+
+    exportAsImage() {
+        const wasSelected = this.selectedTable;
+        this.selectedTable = null;
+        this.render();
+
+        const link = document.createElement('a');
+        link.download = 'wedding-venue-layout.png';
+        link.href = this.canvas.toDataURL('image/png');
+        link.click();
+
+        this.selectedTable = wasSelected;
+        this.render();
+
+        const button = document.getElementById('exportImage');
+        const originalText = button.textContent;
+        button.textContent = '✅ Exported!';
+        button.style.background = '#4caf50';
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.style.background = '';
+        }, 2000);
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const simulator = new VenueSimulator('venueCanvas');
+});
+    </script>
+</body>
+</html>
