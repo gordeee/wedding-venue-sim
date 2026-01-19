@@ -30,6 +30,8 @@ class VenueSimulator {
         this.tables = [];
         this.selectedTable = null;
         this.draggedTable = null;
+        this.selectedTree = null;
+        this.draggedTree = null;
         this.dragOffset = { x: 0, y: 0 };
 
         // Zoom and pan controls
@@ -60,47 +62,78 @@ class VenueSimulator {
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (!this.selectedTable) return;
+            // Handle table shortcuts
+            if (this.selectedTable) {
+                switch(e.key) {
+                    case 'Delete':
+                    case 'Backspace':
+                        this.tables = this.tables.filter(t => t !== this.selectedTable);
+                        this.selectedTable = null;
+                        this.render();
+                        this.updateStats();
+                        e.preventDefault();
+                        break;
+                    case 'r':
+                    case 'R':
+                        this.selectedTable.rotation += 90;
+                        if (this.selectedTable.rotation >= 360) this.selectedTable.rotation = 0;
+                        this.render();
+                        break;
+                    case 'ArrowUp':
+                        this.selectedTable.y -= e.shiftKey ? 0.5 : 1;
+                        this.render();
+                        e.preventDefault();
+                        break;
+                    case 'ArrowDown':
+                        this.selectedTable.y += e.shiftKey ? 0.5 : 1;
+                        this.render();
+                        e.preventDefault();
+                        break;
+                    case 'ArrowLeft':
+                        this.selectedTable.x -= e.shiftKey ? 0.5 : 1;
+                        this.render();
+                        e.preventDefault();
+                        break;
+                    case 'ArrowRight':
+                        this.selectedTable.x += e.shiftKey ? 0.5 : 1;
+                        this.render();
+                        e.preventDefault();
+                        break;
+                    case 'Escape':
+                        this.selectedTable = null;
+                        this.render();
+                        break;
+                }
+            }
 
-            switch(e.key) {
-                case 'Delete':
-                case 'Backspace':
-                    this.tables = this.tables.filter(t => t !== this.selectedTable);
-                    this.selectedTable = null;
-                    this.render();
-                    this.updateStats();
-                    e.preventDefault();
-                    break;
-                case 'r':
-                case 'R':
-                    this.selectedTable.rotation += 90;
-                    if (this.selectedTable.rotation >= 360) this.selectedTable.rotation = 0;
-                    this.render();
-                    break;
-                case 'ArrowUp':
-                    this.selectedTable.y -= e.shiftKey ? 0.5 : 1;
-                    this.render();
-                    e.preventDefault();
-                    break;
-                case 'ArrowDown':
-                    this.selectedTable.y += e.shiftKey ? 0.5 : 1;
-                    this.render();
-                    e.preventDefault();
-                    break;
-                case 'ArrowLeft':
-                    this.selectedTable.x -= e.shiftKey ? 0.5 : 1;
-                    this.render();
-                    e.preventDefault();
-                    break;
-                case 'ArrowRight':
-                    this.selectedTable.x += e.shiftKey ? 0.5 : 1;
-                    this.render();
-                    e.preventDefault();
-                    break;
-                case 'Escape':
-                    this.selectedTable = null;
-                    this.render();
-                    break;
+            // Handle tree shortcuts
+            if (this.selectedTree) {
+                switch(e.key) {
+                    case 'ArrowUp':
+                        this.selectedTree.y -= e.shiftKey ? 0.5 : 1;
+                        this.render();
+                        e.preventDefault();
+                        break;
+                    case 'ArrowDown':
+                        this.selectedTree.y += e.shiftKey ? 0.5 : 1;
+                        this.render();
+                        e.preventDefault();
+                        break;
+                    case 'ArrowLeft':
+                        this.selectedTree.x -= e.shiftKey ? 0.5 : 1;
+                        this.render();
+                        e.preventDefault();
+                        break;
+                    case 'ArrowRight':
+                        this.selectedTree.x += e.shiftKey ? 0.5 : 1;
+                        this.render();
+                        e.preventDefault();
+                        break;
+                    case 'Escape':
+                        this.selectedTree = null;
+                        this.render();
+                        break;
+                }
             }
         });
 
@@ -199,6 +232,7 @@ class VenueSimulator {
             if (this.isPointInTable(mouseX, mouseY, table)) {
                 this.draggedTable = table;
                 this.selectedTable = table;
+                this.selectedTree = null;
                 this.dragOffset.x = mouseX - table.x;
                 this.dragOffset.y = mouseY - table.y;
                 this.canvas.style.cursor = 'grabbing';
@@ -207,11 +241,27 @@ class VenueSimulator {
             }
         }
 
-        // If not clicking on a table, start panning
+        // Check if clicking on a tree
+        for (let i = this.trees.length - 1; i >= 0; i--) {
+            const tree = this.trees[i];
+            if (this.isPointInTree(mouseX, mouseY, tree)) {
+                this.draggedTree = tree;
+                this.selectedTree = tree;
+                this.selectedTable = null;
+                this.dragOffset.x = mouseX - tree.x;
+                this.dragOffset.y = mouseY - tree.y;
+                this.canvas.style.cursor = 'grabbing';
+                this.render();
+                return;
+            }
+        }
+
+        // If not clicking on a table or tree, start panning
         this.isPanning = true;
         this.lastPanPoint = { x: screenX, y: screenY };
         this.canvas.style.cursor = 'grabbing';
         this.selectedTable = null;
+        this.selectedTree = null;
         this.render();
     }
 
@@ -239,11 +289,21 @@ class VenueSimulator {
             this.draggedTable.x = worldCoords.x - this.dragOffset.x;
             this.draggedTable.y = worldCoords.y - this.dragOffset.y;
             this.render();
+            return;
+        }
+
+        // Handle tree dragging
+        if (this.draggedTree) {
+            const worldCoords = this.screenToWorld(screenX, screenY);
+            this.draggedTree.x = worldCoords.x - this.dragOffset.x;
+            this.draggedTree.y = worldCoords.y - this.dragOffset.y;
+            this.render();
         }
     }
 
     handleMouseUp(e) {
         this.draggedTable = null;
+        this.draggedTree = null;
         this.isPanning = false;
         this.canvas.style.cursor = 'grab';
     }
@@ -310,6 +370,15 @@ class VenueSimulator {
                px <= table.x + halfWidth &&
                py >= table.y - halfHeight &&
                py <= table.y + halfHeight;
+    }
+
+    isPointInTree(px, py, tree) {
+        // Check if point is within tree's circular area (radius ~15px = 0.75ft)
+        const treeRadius = 0.75; // feet
+        const dx = px - tree.x;
+        const dy = py - tree.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance <= treeRadius;
     }
 
     render() {
@@ -417,21 +486,31 @@ class VenueSimulator {
         this.trees.forEach(tree => {
             const x = tree.x * SCALE;
             const y = tree.y * SCALE;
+            const isSelected = tree === this.selectedTree;
+
+            // Selection ring if selected
+            if (isSelected) {
+                this.ctx.strokeStyle = '#ff6f00';
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 20, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
 
             // Tree canopy (dark green circle)
-            this.ctx.fillStyle = '#2d5016';
+            this.ctx.fillStyle = isSelected ? '#3d6826' : '#2d5016';
             this.ctx.beginPath();
             this.ctx.arc(x, y, 15, 0, Math.PI * 2);
             this.ctx.fill();
 
             // Tree canopy (lighter green)
-            this.ctx.fillStyle = '#4a7c2c';
+            this.ctx.fillStyle = isSelected ? '#5a9c3c' : '#4a7c2c';
             this.ctx.beginPath();
             this.ctx.arc(x - 3, y - 3, 12, 0, Math.PI * 2);
             this.ctx.fill();
 
             // Tree highlights
-            this.ctx.fillStyle = '#6ba83e';
+            this.ctx.fillStyle = isSelected ? '#7bc84e' : '#6ba83e';
             this.ctx.beginPath();
             this.ctx.arc(x - 5, y - 5, 6, 0, Math.PI * 2);
             this.ctx.fill();
