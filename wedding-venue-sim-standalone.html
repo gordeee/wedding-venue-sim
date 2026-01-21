@@ -1039,56 +1039,174 @@ class VenueSimulator {
         // Clear existing tables
         this.tables = [];
 
-        // Professional wedding layout strategy:
-        // 1. Maximize sightlines to the dais
-        // 2. Create aisles for easy movement
-        // 3. Avoid placing tables behind trees
-        // 4. Maintain proper spacing (3ft minimum between tables)
-        // 5. Use a mix of table types for visual interest
+        // Randomly select a layout strategy
+        const strategies = [
+            this.createTheaterLayout.bind(this),
+            this.createCircularLayout.bind(this),
+            this.createAsymmetricLayout.bind(this),
+            this.createClusteredLayout.bind(this),
+            this.createUShapeLayout.bind(this)
+        ];
 
-        const daisX = this.venue.daisX;  // 24ft
-        const daisY = this.venue.daisY;  // 36.5ft
-        const daisR = this.venue.daisRadius;  // 12.5ft
-
-        // Venue bounds: 62ft wide × 67ft tall
-        // Dais bottom edge: y = 36.5 + 12.5 = 49ft
-        // Available space below dais: 67 - 49 = 18ft
-
-        const minClearance = 4; // feet from dais edge
-        const tableSpacing = 4; // feet between tables
-
-        // SECTION 1: Premium front seating - close to dais
-        // Two 8ft banquet tables flanking center aisle
-        this.addTable('banquet8', 12, 54, 0);  // Left front
-        this.addTable('banquet8', 36, 54, 0);  // Right front
-
-        // SECTION 2: Mid-section - create balanced rows
-        // Left side with 6ft tables
-        this.addTable('banquet6', 10, 60, 0);  // Left mid
-        this.addTable('banquet6', 22, 60, 0);  // Center-left mid
-
-        // Right side with 6ft tables
-        this.addTable('banquet6', 34, 60, 0);  // Center-right mid
-        this.addTable('banquet6', 46, 60, 0);  // Right mid
-
-        // SECTION 3: Serpentine accent tables for visual variety
-        // Create elegant curved sections on sides
-        this.addTable('serpentine', 6, 54, 0);   // Left serpentine facing inward
-        this.addTable('serpentine', 48, 54, 270); // Right serpentine facing center
-
-        // SECTION 4: Above the dais - small intimate area
-        // Place a few tables in the 24ft space above dais
-        this.addTable('banquet6', 12, 20, 0);  // Upper left
-        this.addTable('banquet6', 36, 20, 0);  // Upper right
-
-        // SECTION 5: Side accent tables
-        // Small tables for intimate groups
-        this.addTable('banquet6', 24, 12, 0);  // Top center
+        const randomStrategy = strategies[Math.floor(Math.random() * strategies.length)];
+        randomStrategy();
 
         this.selectedTable = null;
         this.render();
         this.updateStats();
         this.saveLayout();
+    }
+
+    createTheaterLayout() {
+        // Theater-style rows facing the dais
+        const daisBottomY = this.venue.daisY + this.venue.daisRadius + 4;
+        const tableTypes = ['banquet8', 'banquet6'];
+
+        // Row 1: Front premium seating
+        const row1Y = daisBottomY + 2;
+        this.addTable('banquet8', 10, row1Y, 0);
+        this.addTable('banquet8', 24, row1Y, 0);
+        this.addTable('banquet8', 38, row1Y, 0);
+
+        // Row 2: Mid section
+        const row2Y = row1Y + 7;
+        this.addTable('banquet6', 8, row2Y, 0);
+        this.addTable('banquet6', 20, row2Y, 0);
+        this.addTable('banquet6', 32, row2Y, 0);
+        this.addTable('banquet6', 44, row2Y, 0);
+
+        // Row 3: Back section
+        const row3Y = row2Y + 6;
+        this.addTable('banquet6', 12, row3Y, 0);
+        this.addTable('banquet6', 24, row3Y, 0);
+        this.addTable('banquet6', 36, row3Y, 0);
+
+        // Add serpentines for flair
+        this.addTable('serpentine', 54, row1Y, 270);
+        this.addTable('serpentine', 6, 30, 0);
+    }
+
+    createCircularLayout() {
+        // Circular arrangement around the dais
+        const centerX = this.venue.daisX;
+        const centerY = this.venue.daisY;
+        const baseRadius = this.venue.daisRadius + 8;
+
+        // Create semi-circle below dais
+        const numTables = 8;
+        const startAngle = Math.PI * 0.3; // Start from lower-left
+        const endAngle = Math.PI * 0.7;   // End at lower-right
+        const angleStep = (endAngle - startAngle) / (numTables - 1);
+
+        for (let i = 0; i < numTables; i++) {
+            const angle = startAngle + (i * angleStep);
+            const radius = baseRadius + Math.random() * 3;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+
+            const tableType = Math.random() > 0.6 ? 'banquet8' : 'banquet6';
+            // Rotate tables to face the dais
+            const rotation = Math.floor(Math.random() * 4) * 90;
+            this.addTable(tableType, x, y, rotation);
+        }
+
+        // Add serpentines on the sides
+        this.addTable('serpentine', 8, centerY, 0);
+        this.addTable('serpentine', 48, centerY - 8, 270);
+
+        // Add tables above dais
+        this.addTable('banquet6', 12, 18, 0);
+        this.addTable('banquet6', 36, 18, 0);
+        this.addTable('banquet6', 24, 10, 0);
+    }
+
+    createAsymmetricLayout() {
+        // Creative asymmetric layout with intentional imbalance
+        const daisBottomY = this.venue.daisY + this.venue.daisRadius + 4;
+
+        // Heavy left cluster
+        this.addTable('banquet8', 10, daisBottomY + 2, 0);
+        this.addTable('banquet8', 10, daisBottomY + 9, 0);
+        this.addTable('banquet6', 18, daisBottomY + 5.5, 0);
+
+        // Lighter right scatter
+        this.addTable('banquet6', 38, daisBottomY + 1, 0);
+        this.addTable('banquet6', 38, daisBottomY + 7, 0);
+        this.addTable('banquet6', 45, daisBottomY + 11, 0);
+
+        // Center feature
+        this.addTable('serpentine', 24, daisBottomY + 8, Math.floor(Math.random() * 4) * 90);
+
+        // Upper area
+        this.addTable('banquet6', 15, 20, 0);
+        this.addTable('banquet8', 35, 20, 0);
+        this.addTable('banquet6', 24, 12, 0);
+
+        // Side accents
+        this.addTable('serpentine', 8, 35, 0);
+        this.addTable('banquet6', 52, 30, 90);
+    }
+
+    createClusteredLayout() {
+        // Small intimate clusters throughout
+        const daisBottomY = this.venue.daisY + this.venue.daisRadius + 4;
+
+        // Front cluster - premium seating
+        this.addTable('banquet8', 14, daisBottomY + 3, 0);
+        this.addTable('banquet8', 34, daisBottomY + 3, 0);
+        this.addTable('serpentine', 24, daisBottomY + 2, 180);
+
+        // Left cluster
+        this.addTable('banquet6', 9, daisBottomY + 10, 0);
+        this.addTable('banquet6', 9, daisBottomY + 16, 0);
+        this.addTable('banquet6', 16, daisBottomY + 13, 90);
+
+        // Right cluster
+        this.addTable('banquet6', 39, daisBottomY + 10, 0);
+        this.addTable('banquet6', 39, daisBottomY + 16, 0);
+        this.addTable('banquet6', 46, daisBottomY + 13, 270);
+
+        // Center back cluster
+        this.addTable('banquet6', 20, 62, 0);
+        this.addTable('banquet6', 28, 62, 0);
+
+        // Upper clusters
+        this.addTable('banquet6', 12, 20, 0);
+        this.addTable('banquet6', 36, 20, 0);
+        this.addTable('serpentine', 24, 10, Math.floor(Math.random() * 4) * 90);
+    }
+
+    createUShapeLayout() {
+        // U-shaped arrangement embracing the dais
+        const daisBottomY = this.venue.daisY + this.venue.daisRadius + 4;
+        const daisTopY = this.venue.daisY - this.venue.daisRadius - 4;
+
+        // Bottom of U - front tables
+        this.addTable('banquet8', 12, daisBottomY + 2, 0);
+        this.addTable('banquet8', 24, daisBottomY + 2, 0);
+        this.addTable('banquet8', 36, daisBottomY + 2, 0);
+
+        // Left arm of U
+        this.addTable('banquet6', 8, daisBottomY - 2, 90);
+        this.addTable('banquet6', 8, this.venue.daisY, 90);
+        this.addTable('banquet6', 8, daisTopY + 2, 90);
+
+        // Right arm of U
+        this.addTable('banquet6', 40, daisBottomY - 2, 270);
+        this.addTable('banquet6', 40, this.venue.daisY, 270);
+        this.addTable('banquet6', 40, daisTopY + 2, 270);
+
+        // Top of U - tables above dais
+        this.addTable('banquet6', 14, 18, 0);
+        this.addTable('banquet6', 34, 18, 0);
+
+        // Inner details
+        this.addTable('serpentine', 18, daisBottomY + 8, 180);
+        this.addTable('serpentine', 30, daisBottomY + 8, 270);
+
+        // Outer accents
+        this.addTable('banquet6', 24, 64, 0);
+        this.addTable('banquet6', 24, 10, 0);
     }
 
     drawZoomIndicator() {
