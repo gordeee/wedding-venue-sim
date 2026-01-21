@@ -984,17 +984,57 @@ class VenueSimulator {
     exportAsImage() {
         // Temporarily deselect to export clean image
         const wasSelected = this.selectedTable;
+        const wasSelectedTree = this.selectedTree;
         this.selectedTable = null;
-        this.render();
+        this.selectedTree = null;
+
+        // Calculate venue boundary in pixels
+        const venueWidth = this.venue.width * SCALE;  // 62ft * 20px = 1240px
+        const venueHeight = this.venue.height * SCALE; // 67ft * 20px = 1340px
+        const borderSize = 20; // 20px white border
+
+        // Create a new canvas for export with border
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = venueWidth + (borderSize * 2);
+        exportCanvas.height = venueHeight + (borderSize * 2);
+        const exportCtx = exportCanvas.getContext('2d');
+
+        // Fill with white border
+        exportCtx.fillStyle = 'white';
+        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+        // Save the current context and prepare for clean render
+        exportCtx.save();
+        exportCtx.translate(borderSize, borderSize);
+
+        // Temporarily store current context
+        const originalCtx = this.ctx;
+        this.ctx = exportCtx;
+
+        // Render without zoom/pan transformations
+        this.ctx.fillStyle = '#e8f5e9';
+        this.ctx.fillRect(0, 0, venueWidth, venueHeight);
+
+        this.drawGrid();
+        this.drawVenueBoundary();
+        this.drawDais();
+        this.drawTrees();
+        this.drawTables();
+        this.drawMeasurements();
+
+        // Restore original context
+        this.ctx = originalCtx;
+        exportCtx.restore();
 
         // Create download link
         const link = document.createElement('a');
         link.download = 'wedding-venue-layout.png';
-        link.href = this.canvas.toDataURL('image/png');
+        link.href = exportCanvas.toDataURL('image/png');
         link.click();
 
-        // Restore selection
+        // Restore selection and re-render main canvas
         this.selectedTable = wasSelected;
+        this.selectedTree = wasSelectedTree;
         this.render();
 
         // Show feedback
